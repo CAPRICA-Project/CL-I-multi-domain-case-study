@@ -1,0 +1,253 @@
+**FIXME**
+component Z3 {
+    type Relation;
+}
+*********
+
+** Skills for employees
+component Skill {
+  let name : String;
+}
+
+** Trainings providing new skills
+component Training {
+  let skills : Skill*;
+}
+
+** Employees
+component Employee {
+  let skills : Skill*;
+  let trainings : Training*;
+}
+
+** Applications with users and recursively able to host other applications
+component Application {
+  let name : String;
+  let users : Employee*;
+  let <<hosts>> : Z3.Relation.Strict_partial_order;
+}
+
+** Access right for an application
+component Right {
+  let application : Application;
+  let level : Integer;
+  let users : Employee*;
+  let required_skills : Skill*;
+}
+
+** Organizational structure, able to compete with other structures
+component Structure {
+  let name : String;
+  let employees : Employee*;
+  let applications : Application*;
+  let <<competes with>> : Z3.Relation.Symmetric;
+}
+
+let guest = 1;
+let admin = 5;
+
+********
+
+** A user with access rights to an application must not have priviledged access rights to
+** platforms hosting it
+for all (application : Application, user : Employee, platform : Application, right : Right) { 
+  (application.users <<has>> user and platform <<hosts>> application and right.users <<has>> user)
+    => (right.application != platform or right.level <= guest);
+};
+
+** Rights can only be assigned to users with the appropriate skills
+for all (user : Employee, right : Right, skill : Skill) {
+  (user.skills !<<has>> skill and right.required_skills <<has>> skill)
+    => right.users !<<can have>> user;
+};
+
+** Employees who have completed trainings acquire the skills associated with them
+for all (user : Employee, training : Training, skill : Skill) {
+  (user.trainings <<has>> training and training.skills <<has>> skill)
+    => user.skills <<has>> skill;
+};
+
+** Users of an application are employees of one theirs companies
+for all (right : Right, user : Employee, application : Application) {
+  (right.application = application and right.users <<has>> user) =>
+    exists (structure : Structure) {
+      structure.applications <<has>> application;
+      structure.employees <<has>> user;
+    };
+};
+
+** Competing companies must use applications hosted on different platforms
+for all (structure_1 : Structure, structure_2 : Structure, application_1 : Application,
+         application_2 : Application, platform_1 : Application, platform_2 : Application) {
+  (structure_1 <<competes with>> structure_2 and platform_1 <<hosts>> application_1 and
+   platform_2 <<hosts>> application_2 and structure_1.applications <<has>> application_1 and
+   structure_2.applications <<has>> application_2)
+    => (platform_1 != platform_2);
+};
+
+********
+
+** Hypervisors, VMs and applications
+********
+let hv_1 = Application {};
+let hv_2 = Application {};
+let hv_3 = Application {};
+let hv_4 = Application {};
+let hv_5 = Application {};
+let hv_6 = Application {};
+let hv_7 = Application {};
+let hv_8 = Application {};
+let vm_01 = Application {};
+let vm_02 = Application {};
+let vm_03 = Application {};
+let vm_04 = Application {};
+let vm_05 = Application {};
+let vm_06 = Application {};
+let vm_07 = Application {};
+let vm_08 = Application {};
+let vm_09 = Application {};
+let vm_10 = Application {};
+let vm_11 = Application {};
+let vm_12 = Application {};
+let vm_13 = Application {};
+let vm_14 = Application {};
+let vm_15 = Application {};
+let vm_16 = Application {};
+let vm_17 = Application {};
+let vm_18 = Application {};
+let vm_19 = Application {};
+let vm_20 = Application {};
+let vm_21 = Application {};
+let vm_22 = Application {};
+let vm_23 = Application {};
+let vm_24 = Application {};
+
+assert (hv_1 <<hosts>> vm_01);
+assert (hv_1 <<hosts>> vm_02);
+assert (hv_2 <<hosts>> vm_03);
+
+let application_01 = Application {};
+let application_02 = Application {};
+let application_03 = Application {};
+let application_04 = Application {};
+let application_05 = Application {};
+let application_06 = Application {};
+let application_07 = Application {};
+let application_08 = Application {};
+let application_09 = Application {};
+let application_10 = Application {};
+let application_11 = Application {};
+let application_12 = Application {};
+let application_13 = Application {};
+let application_14 = Application {};
+let application_15 = Application {};
+let application_16 = Application {};
+
+assert (vm_01 <<hosts>> application_01);
+assert (vm_02 <<hosts>> application_02);
+assert (vm_03 <<hosts>> application_03);
+assert (vm_04 <<hosts>> application_04);
+assert (vm_05 <<hosts>> application_05);
+assert (vm_05 <<hosts>> application_06);
+assert (vm_06 <<hosts>> application_07);
+assert (vm_06 <<hosts>> application_08);
+
+********
+
+** Companies
+********
+let company_1 = Structure { applications <- [application_01; application_02; application_03;
+                                             application_04]; };
+let company_2 = Structure { applications <- [application_02; application_03]; };
+let company_3 = Structure { applications <- [application_02; application_03]; };
+let company_4 = Structure { applications <- [application_04]; };
+let company_5 = Structure { applications <- [application_04]; };
+
+** UNSAT, because both companies use the same application
+** assert (company_1 <<competes with>> company_2);
+** assert (company_1 <<competes with>> company_3); ** UNSAT
+** assert (company_1 <<competes with>> company_4); ** UNSAT
+** assert (company_1 <<competes with>> company_5); ** UNSAT
+** assert (company_2 <<competes with>> company_3); ** UNSAT
+
+assert (company_2 <<competes with>> company_4);
+assert (company_3 <<competes with>> company_5);
+
+** UNSAT, because rival companies would use applications hosted on the same VM
+** assert (vm_02 = vm_04); ** UNSAT
+
+********
+
+** Skills and trainings
+********
+let linux_system_administration = Skill { name <- "Linux system administration"; };
+let storage_management = Skill { name <- "Storage management"; };
+let data_protection = Skill { name <- "Data protection"; };
+let finance = Skill { name <- "Finance"; };
+let insurance = Skill { name <- "Insurance"; };
+let no_skill = ([]:Skill*);
+
+let sysadmin_101 = Training { skills <- [linux_system_administration; storage_management]; };
+let data_protection_101 = Training { skills <- [data_protection]; };
+
+********
+
+** Rights and employees
+********
+let linux_admin = Right { required_skills <- [linux_system_administration]; };
+let hv_1_admin = Right { application <- hv_1; level <- admin;
+                         required_skills <- [linux_system_administration]; };
+
+let employee_1_01 = Employee { skills <- no_skill; };
+assert (company_1.employees <<has>> employee_1_01);
+let employee_1_02 = Employee { skills <- no_skill; };
+assert (company_1.employees <<has>> employee_1_02);
+let employee_1_03 = Employee { skills <- no_skill; };
+assert (company_1.employees <<has>> employee_1_03);
+let employee_1_04 = Employee { skills <- no_skill; };
+assert (company_1.employees <<has>> employee_1_04);
+let employee_1_05 = Employee { trainings <- [sysadmin_101]; };
+assert (company_1.employees <<has>> employee_1_05);
+let employee_1_06 = Employee { trainings <- [sysadmin_101]; };
+assert (company_1.employees <<has>> employee_1_06);
+let employee_1_07 = Employee { trainings <- [sysadmin_101]; };
+assert (company_1.employees <<has>> employee_1_07);
+let employee_1_08 = Employee { trainings <- [sysadmin_101]; };
+assert (company_1.employees <<has>> employee_1_08);
+let employee_1_09 = Employee { trainings <- [sysadmin_101]; };
+assert (company_1.employees <<has>> employee_1_09);
+let employee_1_10 = Employee { trainings <- [sysadmin_101]; };
+assert (company_1.employees <<has>> employee_1_10);
+let employee_1_11 = Employee { trainings <- [sysadmin_101]; };
+assert (company_1.employees <<has>> employee_1_11);
+let employee_1_12 = Employee { trainings <- [sysadmin_101]; };
+assert (company_1.employees <<has>> employee_1_12);
+let employee_1_13 = Employee { skills <- [finance]; };
+assert (company_1.employees <<has>> employee_1_13);
+let employee_1_14 = Employee { skills <- [finance]; };
+assert (company_1.employees <<has>> employee_1_14);
+let employee_1_15 = Employee { skills <- [finance]; };
+assert (company_1.employees <<has>> employee_1_15);
+let employee_1_16 = Employee { skills <- [finance]; };
+assert (company_1.employees <<has>> employee_1_16);
+let employee_1_17 = Employee { skills <- [insurance]; };
+assert (company_1.employees <<has>> employee_1_17);
+let employee_1_18 = Employee { skills <- [insurance]; };
+assert (company_1.employees <<has>> employee_1_18);
+let employee_1_19 = Employee { skills <- [insurance]; };
+assert (company_1.employees <<has>> employee_1_19);
+let employee_1_20 = Employee { skills <- [insurance]; };
+assert (company_1.employees <<has>> employee_1_20);
+let employee_1_21 = Employee { skills <- [finance; insurance]; };
+assert (company_1.employees <<has>> employee_1_21);
+let employee_1_22 = Employee { skills <- [finance; insurance]; };
+assert (company_1.employees <<has>> employee_1_22);
+
+** UNSAT, because the employee does not have the required skills
+** assert (linux_admin.users <<has>> employee_1_13); ** UNSAT
+** assert (hv_1_admin.users <<has>> employee_1_01); ** UNSAT
+
+assert (hv_1_admin.users <<has>> employee_1_05);
+
+** UNSAT, because the employee uses an application hosted by a VM hosted by the hypervisor
+** assert (application_01.users <<has>> employee_1_05); ** UNSAT
